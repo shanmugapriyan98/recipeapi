@@ -6,7 +6,7 @@ from .serializers import DbmoduleSerializers
 from .models import Recipe
 
 # Create your views here.
-class DbmoduleView(APIView):
+class RecipeView(APIView):
     def get(self, request, id=None):
         if id:
             # If an id is provided in the GET request, retrieve the Todo item by that id
