@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from .serializers import DbmoduleSerializers
+from .serializers import RecipeSerializers
 from .models import Recipe
 
 # Create your views here.
@@ -18,21 +18,22 @@ class RecipeView(APIView):
                 return Response({'errors': 'This todo item does not exist.'}, status=400)
 
             # Serialize todo item from Django queryset object to JSON formatted data
-            read_serializer = DbmoduleSerializers(queryset)
+            read_serializer = RecipeSerializers(queryset)
         
         else:
             # Get all todo items from the database using Django's model ORM
             queryset = Recipe.objects.all()
 
             # Serialize list of todos item from Django queryset object to JSON formatted data
-            read_serializer = DbmoduleSerializers(queryset, many=True)
+            read_serializer = RecipeSerializers(queryset, many=True)
+            # print(read_serializer.data)
 
         # Return a HTTP response object with the list of todo items as JSON
         return Response(read_serializer.data)
     
     def post(self, request):
         # Pass JSON data from user POST request to serializer for validation
-        create_serializer = DbmoduleSerializers(data=request.data)
+        create_serializer = RecipeSerializers(data=request.data)
 
         # Check if user POST data passes validation checks from serializer
         if create_serializer.is_valid():
@@ -41,7 +42,7 @@ class RecipeView(APIView):
             todo_item_object = create_serializer.save()
 
             # Serialize the new todo item from a Python object to JSON format
-            read_serializer = DbmoduleSerializers(todo_item_object)
+            read_serializer = RecipeSerializers(todo_item_object)
 
             # Return a HTTP response with the newly created todo item data
             return Response(read_serializer.data, status=201)

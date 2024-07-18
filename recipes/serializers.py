@@ -1,8 +1,8 @@
 from rest_framework import serializers
 from .models import Recipe
 
-class DbmoduleSerializers(serializers.ModelSerializer):
-  name = serializers.CharField(max_length=20, required=True)
+class RecipeSerializers(serializers.ModelSerializer):
+  name = serializers.CharField(max_length=50, required=True)
   info = serializers.CharField(max_length=1000, required=True)
 
   def create(self, validated_data):
