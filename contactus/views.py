@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from .serializers import MessageSerializers
 
 # Create your views here.
-class RecipeView(APIView):
+class MessagesView(APIView):
     
     def post(self, request):
         create_serializer = MessageSerializers(data=request.data)
