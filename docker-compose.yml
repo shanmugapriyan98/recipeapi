@@ -4,8 +4,8 @@ services:
   db:
     image: postgres:13
     environment:
-      POSTGRES_DB: recipe
-      POSTGRES_USER: django
+      POSTGRES_DB: mydatabase
+      POSTGRES_USER: root
       POSTGRES_PASSWORD: 1234
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -23,8 +23,8 @@ services:
     depends_on:
       - db
     environment:
-      - DB_NAME=recipe
-      - DB_USER=django
+      - DB_NAME=mydatabase
+      - DB_USER=root
       - DB_PASSWORD=1234
       - DB_HOST=db
       - DB_PORT=5432

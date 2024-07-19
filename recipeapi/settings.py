@@ -55,7 +55,8 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-        os.getenv('FRONTEND_HOST')
+        'http://localhost:3000',
+        'http://recipeapi-cloud.s3-website-us-east-1.amazonaws.com'
     ]
 ROOT_URLCONF = 'recipeapi.urls'
 
