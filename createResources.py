@@ -1,6 +1,7 @@
 import boto3
 import os
 from dotenv import load_dotenv
+import json
 
 # Loading the environment variables from a .env file
 load_dotenv()
@@ -16,48 +17,56 @@ IAM_ROLE = os.getenv('IAM_ROLE')
 ec2 = boto3.client('ec2', region_name=AWS_REGION)
 ec2_resource = boto3.resource('ec2', region_name=AWS_REGION)
 
+# File to store resource IDs
+ID_FILE = 'resource_ids.json'
+
+def write_ids_to_file(ids):
+    with open(ID_FILE, 'w') as f:
+        json.dump(ids, f)
+    print(f'Resource IDs written to {ID_FILE}')
+
 # Create VPC
 def create_vpc():
     vpc = ec2_resource.create_vpc(CidrBlock='10.0.0.0/16')
     vpc.wait_until_available()
     vpc.create_tags(Tags=[{"Key": "Name", "Value": "recipeapi_vpc"}])
     print(f'VPC created: {vpc.id}')
-    return vpc
+    return vpc.id
 
 # Create Subnet
-def create_subnet(vpc):
-    subnet = ec2_resource.create_subnet(CidrBlock='10.0.1.0/24', VpcId=vpc.id)
+def create_subnet(vpc_id):
+    subnet = ec2_resource.create_subnet(CidrBlock='10.0.1.0/24', VpcId=vpc_id)
     subnet.create_tags(Tags=[{"Key": "Name", "Value": "recipeapi_subnet"}])
     print(f'Subnet created: {subnet.id}')
-    return subnet
+    return subnet.id
 
 # Create Internet Gateway and attach it to the VPC
-def create_internet_gateway(vpc):
+def create_internet_gateway(vpc_id):
     igw = ec2_resource.create_internet_gateway()
-    igw.attach_to_vpc(VpcId=vpc.id)
-    vpc.modify_attribute(EnableDnsHostnames={'Value': True})
-    vpc.modify_attribute(EnableDnsSupport={'Value': True})
+    igw.attach_to_vpc(VpcId=vpc_id)
+    ec2_resource.Vpc(vpc_id).modify_attribute(EnableDnsHostnames={'Value': True})
+    ec2_resource.Vpc(vpc_id).modify_attribute(EnableDnsSupport={'Value': True})
     print(f'Internet Gateway created and attached: {igw.id}')
-    return igw
+    return igw.id
 
 # Create Route Table and add a route to the Internet Gateway
-def create_route_table(vpc, igw, subnet):
-    route_table = ec2_resource.create_route_table(VpcId=vpc.id)
+def create_route_table(vpc_id, igw_id, subnet_id):
+    route_table = ec2_resource.create_route_table(VpcId=vpc_id)
     route_table.create_tags(Tags=[{"Key": "Name", "Value": "recipeapi_route_table"}])
     route_table.create_route(
         DestinationCidrBlock='0.0.0.0/0',
-        GatewayId=igw.id
+        GatewayId=igw_id
     )
-    route_table.associate_with_subnet(SubnetId=subnet.id)
+    route_table.associate_with_subnet(SubnetId=subnet_id)
     print(f'Route Table created and associated with subnet: {route_table.id}')
-    return route_table
+    return route_table.id
 
 # Create Security Group
-def create_security_group(group_name, description, vpc):
+def create_security_group(group_name, description, vpc_id):
     security_group = ec2_resource.create_security_group(
         GroupName=group_name,
         Description=description,
-        VpcId=vpc.id
+        VpcId=vpc_id
     )
     security_group.authorize_ingress(
         IpPermissions=[
@@ -69,19 +78,19 @@ def create_security_group(group_name, description, vpc):
         ]
     )
     print(f'Security Group created: {security_group.id}')
-    return security_group
+    return security_group.id
 
 # Create EC2 instance
-def create_ec2_instance(subnet, security_group):
+def create_ec2_instance(subnet_id, security_group_id):
     instances = ec2_resource.create_instances(
         ImageId='ami-0b72821e2f351e396',  # Replace with your desired AMI ID
         MinCount=1,
         MaxCount=1,
         NetworkInterfaces=[{
-            'SubnetId': subnet.id,
+            'SubnetId': subnet_id,
             'DeviceIndex': 0,
             'AssociatePublicIpAddress': True,
-            'Groups': [security_group.id]
+            'Groups': [security_group_id]
         }],
         InstanceType='t2.micro',
         KeyName=KEY_NAME,
@@ -92,8 +101,7 @@ def create_ec2_instance(subnet, security_group):
     print(f'Created EC2 instance: {instance_id}')
 
     # Wait for the instance to be in the running state
-    instance = ec2_resource.Instance(instance_id)
-    instance.wait_until_running()
+    ec2_resource.Instance(instance_id).wait_until_running()
     print(f'EC2 instance is running: {instance_id}')
 
     return instance_id
@@ -108,26 +116,20 @@ def create_and_link_eip(instance_id):
         AllocationId=eip_allocation_id
     )
     print(f'Elastic IP {eip_public_ip} allocated and associated with instance {instance_id}')
-    return eip_public_ip
+    return eip_allocation_id, eip_public_ip
 
 # Main script
 group_name = 'recipeapi-sg'
 description = 'Security group for Recipe API Django application'
 
-# Create VPC
-vpc = create_vpc()
-# Create Subnet
-subnet = create_subnet(vpc)
-# Create Internet Gateway
-igw = create_internet_gateway(vpc)
-# Create Route Table and add a route to the Internet Gateway
-create_route_table(vpc, igw, subnet)
-# Create Security Group
-security_group = create_security_group(group_name, description, vpc)
-# Create EC2 Instance
-ec2_instance = create_ec2_instance(subnet, security_group)
-# Allocate and Associate Elastic IP
-eip_public_ip = create_and_link_eip(ec2_instance)
+ids = {}
+ids['vpc_id'] = create_vpc()
+ids['subnet_id'] = create_subnet(ids['vpc_id'])
+ids['igw_id'] = create_internet_gateway(ids['vpc_id'])
+ids['route_table_id'] = create_route_table(ids['vpc_id'], ids['igw_id'], ids['subnet_id'])
+ids['security_group_id'] = create_security_group(group_name, description, ids['vpc_id'])
+ids['instance_id'] = create_ec2_instance(ids['subnet_id'], ids['security_group_id'])
+ids['eip_allocation_id'], ids['eip_public_ip'] = create_and_link_eip(ids['instance_id'])
 
-print(f'EC2 instance created: {ec2_instance}')
-print(f'Elastic IP allocated: {eip_public_ip}')
+# Write IDs to file
+write_ids_to_file(ids)
