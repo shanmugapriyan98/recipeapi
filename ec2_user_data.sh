@@ -1,5 +1,7 @@
 #!/bin/bash
 
+exec > /var/log/user-data.log 2>&1
+
 # Update the package repository and install Docker
 sudo yum update -y
 sudo yum install -y docker
@@ -14,7 +16,10 @@ sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-
 sudo chmod +x /usr/local/bin/docker-compose
 
 # Add the current user to the Docker group
-sudo usermod -aG docker $USER
+sudo usermod -aG docker ec2-user
+
+# Give necessary permissions to the Docker socket
+sudo chmod 666 /var/run/docker.sock
 
 # Change to the home directory
 cd /home/ec2-user
@@ -31,5 +36,8 @@ aws s3 cp s3://recipeapi/recipeapi.zip recipe-api-app.zip
 sudo yum install -y unzip
 unzip recipe-api-app.zip -d .
 
-# Build and run the Docker containers
-sudo docker-compose up
+# Give necessary permissions to the ec2-user for the application directory
+sudo chown -R ec2-user:ec2-user /home/ec2-user/recipe-api-app
+cd /home/ec2-user/recipe-api-app
+
+docker-compose up -d 

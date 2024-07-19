@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    'recipes.apps.RecipesConfig'
+    'recipes.apps.RecipesConfig',
+    'contactus.apps.ContactusConfig'
 ]
 
 MIDDLEWARE = [
