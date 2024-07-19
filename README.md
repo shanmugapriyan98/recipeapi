@@ -1,5 +1,11 @@
+## Getting Started
+
 Steps to deploy the django app on the cloud:
 
-1. Run python automation.py
+```bash
+python automation.py
+```
 
-2. You will recieve the elastic ip link from the output, change the host address in recipe-share directory. 
+You will recieve the elastic ip link from the output, change the host address in recipe-share directory. 
+
+Open [http://[ElasticIP]:8000] with your browser to see the result.
